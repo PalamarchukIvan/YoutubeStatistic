@@ -2,6 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/youtube-data-analyzer.iml" filepath="$PROJECT_DIR$/.idea/modules/youtube-data-analyzer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/youtube-data-analyzer/.idea/modules/youtube-data-analyzer-build.iml" filepath="$PROJECT_DIR$/youtube-data-analyzer/.idea/modules/youtube-data-analyzer-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/youtube-data-producer.iml" filepath="$PROJECT_DIR$/.idea/modules/youtube-data-producer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/youtube-data-producer/.idea/modules/youtube-data-producer-build.iml" filepath="$PROJECT_DIR$/youtube-data-producer/.idea/modules/youtube-data-producer-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/youtube_analyzer.iml" filepath="$PROJECT_DIR$/.idea/modules/youtube_analyzer.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/youtube_analyzer-build.iml" filepath="$PROJECT_DIR$/.idea/modules/youtube_analyzer-build.iml" />
     </modules>

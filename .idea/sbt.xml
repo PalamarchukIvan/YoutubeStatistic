@@ -13,6 +13,26 @@
         </option>
         <option name="sbtVersion" value="1.9.0" />
       </SbtProjectSettings>
+      <SbtProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/youtube-data-analyzer" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/youtube-data-analyzer" />
+            <option value="$PROJECT_DIR$/youtube-data-analyzer/project" />
+          </set>
+        </option>
+        <option name="sbtVersion" value="1.9.0" />
+      </SbtProjectSettings>
+      <SbtProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/youtube-data-producer" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/youtube-data-producer" />
+            <option value="$PROJECT_DIR$/youtube-data-producer/project" />
+          </set>
+        </option>
+        <option name="sbtVersion" value="1.9.0" />
+      </SbtProjectSettings>
     </option>
   </component>
 </project>
