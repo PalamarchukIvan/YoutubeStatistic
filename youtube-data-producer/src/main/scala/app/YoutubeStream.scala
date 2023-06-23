@@ -76,7 +76,7 @@ case class YoutubeStream(channelId: String, API_KEY: String) {
             .execute()
           val channels: java.util.List[Channel] = channelsResponse.getItems
           if (channels != null && !channels.isEmpty) {
-            rdd.addOne(spark.sparkContext.parallelize(Seq(channels.get(0).toString)))
+            rdd.addOne(spark.sparkContext.parallelize(Seq(channels.get(0).toString.split("\"statistics\":")(1).dropRight(1))))
           }
           Thread.sleep(1000)
         }

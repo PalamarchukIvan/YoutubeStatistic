@@ -13,9 +13,9 @@ val sparkDependencies = Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   "org.apache.spark" %% "spark-streaming-kafka-0-10" % sparkVersion,
-  "org.apache.spark" %% "spark-streaming" % "3.4.0",
-  "org.apache.spark" %% "spark-core" % "3.4.0",
-  "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.4.0",
+  "org.apache.spark" %% "spark-streaming" % sparkVersion,
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
   "org.postgresql" % "postgresql" % "42.5.4",
   "com.google.apis" % "google-api-services-youtube" % "v3-rev222-1.18.0-rc",
 
