@@ -1,38 +1,28 @@
-import com.fasterxml.jackson.databind.ObjectMapper
-import org.apache.hadoop.shaded.org.codehaus.jackson.`type`.TypeReference
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.spark.sql.types.{BooleanType, IntegerType, StringType, StructField, StructType}
-import org.apache.spark.sql.{Encoder, SaveMode, SparkSession}
+import org.apache.spark.sql.functions.typedLit
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Encoders, SaveMode, SparkSession}
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.KafkaUtils
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
-import java.time.Instant
-import java.util.{Date, Properties}
+import java.time.LocalDate
+import java.util.Properties
 case class DataProcessor() {
+
+  val spark = SparkSession.builder()
+    .appName("KafkaStreamingApp")
+    .master("local[*]") // Set your Spark master URL accordingly
+    .getOrCreate()
+  spark.sparkContext.setLogLevel("ERROR")
+
   def startListening(): Unit = {
-    val spark = SparkSession.builder()
-      .appName("KafkaStreamingApp")
-      .master("local[*]") // Set your Spark master URL accordingly
-      .getOrCreate()
-    spark.sparkContext.setLogLevel("ERROR")
 
     val schemaRowData = StructType(Seq(
       StructField("hiddenSubscriberCount", BooleanType),
       StructField("subscriberCount", StringType),
       StructField("videoCount", StringType),
       StructField("viewCount", StringType)
-    ))
-
-    val schemaActualData = StructType(Seq(
-      StructField("date", StringType),
-      StructField("subscriberCount", IntegerType),
-      StructField("subscribersDif", IntegerType),
-      StructField("videoCount", IntegerType),
-      StructField("videoCountDif", IntegerType),
-      StructField("viewCount", IntegerType),
-      StructField("viewCountDif", IntegerType)
     ))
 
     val kafkaParams = Map(
@@ -64,21 +54,57 @@ case class DataProcessor() {
 
         import spark.implicits._
         val ds = df.as[RowObtainedData]
-        ds.show
-        ds.schema
+        val prev = getPrevData()
+
+        val analyzedDs =  ds.withColumn("subscribersDif", $"subscriberCount" - prev.subscriberCount)
+          .withColumn("videoCountDif", $"videoCount" - prev.videoCount)
+          .withColumn("viewCountDif", $"viewCount" - prev.viewCount)
+          .withColumn("date", typedLit(LocalDate.now().toString))
+          .drop("hiddenSubscriberCount")
+
+        val resultDs = analyzedDs.as[ObtainedData]
 
         // Сохраняем DataFrame в базу данных PostgreSQL
         val connectionProperties = new Properties()
         connectionProperties.put("user", "postgres")
         connectionProperties.put("password", "postgres")
-        df.write.mode(SaveMode.Append)
+        resultDs.write.mode(SaveMode.Append)
           .jdbc("jdbc:postgresql://localhost:5432/employee",
-            "youtube_data", connectionProperties)
+            "youtube_project", connectionProperties)
       }
     }
 
     streamingContext.start()
     streamingContext.awaitTermination()
+  }
+
+  private def getPrevData(): ObtainedData = {
+    // Сохраняем DataFrame в базу данных PostgreSQL
+    val connectionProperties = new Properties()
+    connectionProperties.put("user", "postgres")
+    connectionProperties.put("password", "postgres")
+
+    val jdbcUrl = "jdbc:postgresql://localhost:5432/employee"
+
+    val query =
+      """
+        |SELECT *
+        |FROM youtube_project
+        |ORDER BY id_data DESC
+        |LIMIT 1
+        |""".stripMargin
+
+    import spark.implicits._
+    val lastRecordDF = spark.read.jdbc(jdbcUrl, s"($query) AS tmp", connectionProperties)
+    lastRecordDF.show
+
+    val lastRecord = if (lastRecordDF.isEmpty) {
+      ObtainedData("0", "0", "0", "0", "0", "0", "0")
+    } else {
+      lastRecordDF.as[ObtainedData].head()
+    }
+
+    lastRecord
   }
 
 }
