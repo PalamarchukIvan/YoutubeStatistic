@@ -1,6 +1,10 @@
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.services.youtube.YouTube
+import model.{DataFromDB, ObtainedData, RowObtainedData, Video}
 import org.apache.spark.sql.functions.typedLit
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Encoders, SaveMode, SparkSession}
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.KafkaUtils
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
@@ -8,11 +12,18 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 import java.time.LocalDate
 import java.util.Properties
-case class DataProcessor() {
+import scala.collection.mutable
+case class DataProcessor(channelId: String, API_KEY: String) {
 
-  val spark = SparkSession.builder()
+
+  private val connectionProperties = new Properties()
+  connectionProperties.put("user", "postgres")
+  connectionProperties.put("password", "postgres")
+
+  private val jdbcUrl = "jdbc:postgresql://localhost:5432/youtube_project"
+  private val spark = SparkSession.builder()
     .appName("KafkaStreamingApp")
-    .master("local[*]") // Set your Spark master URL accordingly
+    .master("local[6]") // Set your Spark master URL accordingly
     .getOrCreate()
   spark.sparkContext.setLogLevel("ERROR")
 
@@ -65,31 +76,49 @@ case class DataProcessor() {
         val resultDs = analyzedDs.as[ObtainedData]
 
         // Сохраняем DataFrame в базу данных PostgreSQL
-        val connectionProperties = new Properties()
-        connectionProperties.put("user", "postgres")
-        connectionProperties.put("password", "postgres")
         resultDs.write.mode(SaveMode.Append)
-          .jdbc("jdbc:postgresql://localhost:5432/employee",
-            "youtube_project", connectionProperties)
+          .jdbc(jdbcUrl,
+            "youtube_data", connectionProperties)
+
+        resultDs.collect.foreach { data =>
+          updateOnNewVideo(data.videoCountDif.toDouble.toInt, prev.id_data)
+        }
+        println()
       }
     }
 
     streamingContext.start()
     streamingContext.awaitTermination()
   }
+  private def updateOnNewVideo(count: Int, id: Int): Unit = {
+    val youtube = new YouTube.Builder(GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance, null)
+      .setApplicationName("youtube-stats")
+      .build()
 
-  private def getPrevData(): ObtainedData = {
-    // Сохраняем DataFrame в базу данных PostgreSQL
-    val connectionProperties = new Properties()
-    connectionProperties.put("user", "postgres")
-    connectionProperties.put("password", "postgres")
+    val resultSearch = youtube.search()
+      .list("snippet")
+      .setChannelId(channelId)
+      .setMaxResults(count)
+      .setOrder("date") // Sort by date
+      .setType("video")
+      .setKey(API_KEY)
+      .execute();
 
-    val jdbcUrl = "jdbc:postgresql://localhost:5432/employee"
+    val videos = mutable.Queue[Video]()
+    resultSearch.getItems.forEach { video =>
+        val title = video.getSnippet.getTitle
+        val description = video.getSnippet.getDescription
+        val dataId = id
+      videos.addOne(Video(dataId, title, description))
+    }
+    saveNewVideo(videos.toList)
+  }
 
+  private def getPrevData(): DataFromDB = {
     val query =
       """
         |SELECT *
-        |FROM youtube_project
+        |FROM youtube_data
         |ORDER BY id_data DESC
         |LIMIT 1
         |""".stripMargin
@@ -99,12 +128,17 @@ case class DataProcessor() {
     lastRecordDF.show
 
     val lastRecord = if (lastRecordDF.isEmpty) {
-      ObtainedData("0", "0", "0", "0", "0", "0", "0")
+      DataFromDB(2, "0", "0", "0", "0", "0", "0", "0")
     } else {
-      lastRecordDF.as[ObtainedData].head()
+      lastRecordDF.as[DataFromDB].head()
     }
 
     lastRecord
   }
 
+  private def saveNewVideo(videos: List[Video]): Unit = {
+    import spark.implicits._
+    val videoDF = videos.toDF("data_id", "video_name", "video_description")
+    videoDF.write.mode(SaveMode.Append).jdbc(jdbcUrl, "videos", connectionProperties)
+  }
 }

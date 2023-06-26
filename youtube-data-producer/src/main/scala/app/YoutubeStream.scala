@@ -78,7 +78,7 @@ case class YoutubeStream(channelId: String, API_KEY: String) {
           if (channels != null && !channels.isEmpty) {
             rdd.addOne(spark.sparkContext.parallelize(Seq(channels.get(0).toString.split("\"statistics\":")(1).dropRight(1))))
           }
-          Thread.sleep(1000)
+          Thread.sleep(10000)
         }
       }
     }
