@@ -33,7 +33,6 @@ case class YoutubeStream(channelId: String, API_KEY: String) {
     val rddQueue = new mutable.Queue[RDD[String]]()
     val stream = ssc.queueStream(rddQueue)
 
-
     setUpKafka()
 
     listenForChannelStats(channelId, rddQueue)
